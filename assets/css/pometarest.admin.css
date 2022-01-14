@@ -1,0 +1,6 @@
+.notice p .info .list{
+    display: block;
+padding: 5px;
+max-height: 150px;
+overflow: auto;
+}
