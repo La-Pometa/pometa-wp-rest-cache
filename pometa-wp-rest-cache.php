@@ -47,7 +47,14 @@ Primary Branch: main
 	/* INCLUDES */
 
 	require_once("includes/common.php");
+    require_once("includes/lib.php");
+    require_once("includes/clean.php");
+
+	//TODO: Solament si estic a l'administrador
     require_once("includes/settings.php");
+
+	//TODO: Solament si estic amb REST
+	require_once("includes/runtime.php");
 
 	require_once("general.php");
 
