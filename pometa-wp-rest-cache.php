@@ -1,15 +1,16 @@
 <?php
 
 /*
-	Plugin Name: Pometa REST API Cache
-	Plugin URI: http://www.lapometa.com/plugins/pometarest
-	Description: Gestió Cache API REST Pometa
-	Version: 1.1
-	Author: Jordi Fonfreda
-	Email: suport@lapometa.com
-	Author URI: http://www.lapometa.com/author/jordi-fonfreda
-	Text Domain: pometarestltd
-
+Plugin Name: Pometa REST API Cache
+Plugin URI: http://www.lapometa.com/plugins/pometarest
+Description: Gestió Cache API REST Pometa
+Version: 1.1
+Author: Jordi Fonfreda
+Email: suport@lapometa.com
+Author URI: http://www.lapometa.com/author/jordi-fonfreda
+Text Domain: pometarestltd
+GitHub Plugin URI: La-Pometa/pometa-wp-rest-cache
+Primary Branch: main
 */
 
 
