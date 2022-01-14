@@ -164,6 +164,9 @@ class pometaRestSettings {
 
     	</style>
 		<div class="wrap">
+            <style type="text/css">
+               html[data-theme="dark"] form h2 {color: #ccc;}
+            </style>
 			<h2>Pometa API REST Cache</h2>
 			<p><?php echo __("Pàgina de configuració de <strong>Pometa API REST Cache</strong>","pometaRestltd"); ?></p>
 			<?php //settings_errors(); ?>
@@ -202,6 +205,13 @@ class pometaRestSettings {
 			'prest-admin' // page
 		);
 
+        add_settings_section(
+			'pRest_setting_autoupdate', // id
+			'<hr><br>'.__("Actualització del cache:","prestltd"), // title
+			array( $this, 'pRest_section_autoupdate' ), // callback
+			'prest-admin' // page
+		);
+
 		add_settings_section(
 			'pRest_setting_advanced', // id
 			'<hr><br>'.__("Altres configuracions:","prestltd"), // title
@@ -216,6 +226,7 @@ class pometaRestSettings {
 			'prest-admin', // page
 			'pRest_setting_enable' // section
 		);
+
 
 
         add_settings_field(
@@ -254,6 +265,7 @@ class pometaRestSettings {
             'pRest_setting_advanced' // section
         );
 
+
         add_settings_field(
             'htaccess_patch_403_enabled', // id
             'Apache 403 Forbidden', // title
@@ -261,7 +273,23 @@ class pometaRestSettings {
             'prest-admin', // page
             'pRest_setting_advanced' // section
         );
+
+        add_settings_field(
+			'autoupdate', // id
+			__("Actualització automàtica","prestltd"), // title
+			array( $this, 'autoupdate_callback' ), // callback
+			'prest-admin', // page
+			'pRest_setting_autoupdate' // section
+		);
 		
+        add_settings_field(
+			'autoupdate_minutes', // id
+			__('Minuts','prestltd'), // title
+			array( $this, 'autoupdate_minutes_callback' ), // callback
+			'prest-admin', // page
+			'pRest_setting_autoupdate' // section
+		);
+
 
 
 	}
@@ -397,6 +425,11 @@ class pometaRestSettings {
 		echo "<p>Estableix quan expira una consulta de API REST per a esborrar la còpia actual i permetre generar una versió nova.</p>";
 	}
 
+    public function pRest_section_autoupdate() {
+		echo "<p>Estableix si vols mantenir una versió actualitzada de les pàgines en cache de forma automàtica.</p>";
+	}
+
+
     public function pRest_section_advanced() {
 		echo "<p>Més configuracions per a <strong>Pometa API REST Cache</strong>.</p>";
 	}
@@ -433,6 +466,27 @@ class pometaRestSettings {
         }
 
     }
+
+    public function autoupdate_callback() {
+        $selected = ((isset( $this->pRest_options['autoupdate']) && esc_attr( $this->pRest_options['autoupdate']) == "on" ) ? 'checked="checked"' : '');
+        $msg = __("Si està marcat, el cache es mantindrà actualitzat de forma automàtica (cron).","pometaRestltd");
+		echo sprintf('<input class="regular-checbox" type="checkbox" name="pRest_settings[autoupdate]" id="autoupdate" %s> <label for="autoupdate">%s</label>',$selected,$msg);
+        if ( $this->get_option("autoupdate")){
+            $link_update = add_query_arg(array("page"=>"prest","action"=>"autoupdate-status"),admin_url("options-general.php"));
+            echo '<br><br> <a href="'.$link_update.'" class="button">'.__("Mostrar estat").'</a>';
+        }
+
+    }
+
+
+    public function autoupdate_minutes_callback() {
+        $value = get_array_value($this->pRest_options,"autoupdate_minutes",false);
+        $placeholder = 120;
+        $msg = __("Freqüencia actualització <strong>en minuts</strong> de les pàgines en cache","pometaRestltd");
+        echo sprintf('<input class="regular-number" type="number" name="pRest_settings[autoupdate_minutes]" id="autoupdate_minutes" style="width:120px" value="%s" placeholder="%s"> <label for="autoupdate_minutes">%s</label>',$value,$placeholder,$msg);
+
+    }
+
 	public function gzenabled_callback() {
         $disabled="";
         $selected = ((isset( $this->pRest_options['gzenabled']) && esc_attr( $this->pRest_options['gzenabled']) == "on" ) ? 'checked="checked"' : '');
