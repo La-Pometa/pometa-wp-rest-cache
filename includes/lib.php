@@ -40,8 +40,21 @@ function pRest_settings_get_file_life(){
 }
 function pRest_settings_get_file_life_seconds(){
     $minutes = pRest_settings_get_file_life();
+    if ( !$minutes ) {
+        return false;
+    }
     $seconds = ($minutes ? $minutes * 60: 60);
     return $seconds;
+}
+
+function pRest_settings_get_autoupdate() {
+    $settings = pRest_settings_get();
+    return get_array_value($settings,"autoupdate_enabled",false);
+}
+
+function pRest_settings_get_autoupdate_minuts() {
+    $settings = pRest_settings_get();
+    return get_array_value($settings,"autoupdate_minuts",120);
 }
 
 function pRest_settings_get_path() {
@@ -99,6 +112,15 @@ function pRest_get_request_uri() {
 
     $uri = get_array_value($_SERVER,"REQUEST_URI",false);
     $uri_params = explode("/wp-json/",$uri);
+    if ( count($uri_params) == 1 ) {
+
+        //No hi ha wp-json a la consulta
+        return array("", "");
+    }
+
+
+
+
     $directory = get_array_value($uri_params,"0","no-domain");
     $uri = get_array_value($uri_params,"1","no-directory");
     return array($uri , $directory);

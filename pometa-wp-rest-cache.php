@@ -49,6 +49,7 @@ Primary Branch: main
 	require_once("includes/common.php");
     require_once("includes/lib.php");
     require_once("includes/clean.php");
+	require_once("includes/autoupdate.php");
 
 	//TODO: Solament si estic a l'administrador
     require_once("includes/settings.php");

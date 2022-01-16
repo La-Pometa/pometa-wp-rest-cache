@@ -20,6 +20,7 @@ function pRestCacheIsExpired($filename) {
     $expired = false;
     
     $file_time = filemtime($filename);
+    
     $file_life = pRest_settings_get_file_life_seconds();
     if ( !$file_life ) {
         return false;

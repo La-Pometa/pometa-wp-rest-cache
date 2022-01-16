@@ -324,10 +324,47 @@ class pometaRestSettings {
             $notices=array();
 
             if ( $action ) {
+
+
+
+                $update_htaccess_remove=false;
+                $update_htaccess=false;
+                $update_cache_clean=false;
+                
                 if ( $action == "htaccess-update") {
                     $update_htaccess=true;
                     $notices[]=__("Regles .htaccess actualitzades.","pometaRestltd");
                 }
+
+                else if ( $action == "autoupdate-status") {
+                    $msg="";
+                    $data = pRest_AutoUpdate_get(0);
+                    $total_registers = count($data);
+                    $now  = time();
+                    $ttl = intval(pRest_settings_get_autoupdate_minuts() * 60);
+
+                    $expired = 0;
+
+
+                    foreach($data as $pos => $reg) {
+                        $time = intval(get_object_value($reg,"time","0"));
+                        $time_expire = $time + $ttl;
+
+                        if ( $time_expire < $now ) {
+                            $expired++;
+                        }
+                    }
+                    $pc_completed=100;
+                    if ( $expired  ) {
+                        $pc_completed = floatval(($total_registers-$expired)*100/$total_registers);
+                    }
+                    $pc_completed = number_format($pc_completed,2);
+                    $pc_completed = str_replace(".00","",$pc_completed);
+
+                    $notices[]=sprintf(__("<br><u>AutoUpdate</u> <br> Registres: %d consultes <br> Estat: %s%%  completat (%d/%d pendent).","pometaRestltd"),$total_registers,$pc_completed,$expired,$total_registers);
+
+                }
+
                 else if ( $action == "cache-clean") {
                     $result = pRestCacheClean(array(),"CLEAN");
                     $files = get_array_value($result,"files",0);;
@@ -353,8 +390,9 @@ class pometaRestSettings {
                         $file_size = get_array_value($data,"size",0);
                         $file_time = get_array_value($data,"time",0);
                         $time = $this->expire_minutes_time($file_time);
+
                         if ( !$time ) {
-                            $time = __(" - Caducat - ","pometaRestltd");
+                            $time = __(" - NoCaduca - ","pometaRestltd");
                         }
                         $file = get_array_value($data,"file","-no-file-");
                         $size += $file_size;
@@ -474,6 +512,8 @@ class pometaRestSettings {
         if ( $this->get_option("autoupdate")){
             $link_update = add_query_arg(array("page"=>"prest","action"=>"autoupdate-status"),admin_url("options-general.php"));
             echo '<br><br> <a href="'.$link_update.'" class="button">'.__("Mostrar estat").'</a>';
+
+            pRest_Cache_Cron_AutoUpdate();
         }
 
     }

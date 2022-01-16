@@ -17,11 +17,36 @@ function pRestFilters() {
     crear una versió de cache de la consulta actual
 -*/
 function pRestFilterResponse($result , $t, $request ) {
+    // echo "<br>[prest:debug].. filter response...";
     $file = pRest_get_request_cache_file($complete = true);
+    // echo "<br>[prest:debug].. filename: $file";
     $result = pRestCacheCreate($file,$result);
+    do_action("prest/cache/created",$request);
+
     return $result;
 }
 
+
+function pRestCache_GetUrlFromRequest($request) {
+
+    $route = false;
+
+    if ( $request ) {
+        $route = $request->get_route();
+
+        $params = $request->get_query_params();
+
+        if ($params && is_array($params) and count($params)) {
+            $has_params = http_build_query($params);
+            if ( $has_params ) {
+                $route .="?".$has_params;
+            }
+        }
+    }
+
+    return $route;
+
+}
 
 
 /*-
