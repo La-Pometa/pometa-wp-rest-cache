@@ -54,7 +54,12 @@ function pRest_settings_get_autoupdate() {
 
 function pRest_settings_get_autoupdate_minuts() {
     $settings = pRest_settings_get();
-    return get_array_value($settings,"autoupdate_minuts",120);
+    $minutes_default = apply_filters("prest/autoupdate/minutes",120);
+    $m = get_array_value($settings,"autoupdate_minutes",$minutes_default);
+    if ( $m == 0 ) {
+        $m = $minutes_default;
+    }
+    return $m;
 }
 
 function pRest_settings_get_path() {
@@ -112,6 +117,9 @@ function pRest_get_request_uri() {
 
     $uri = get_array_value($_SERVER,"REQUEST_URI",false);
     $uri_params = explode("/wp-json/",$uri);
+    
+    
+
     if ( count($uri_params) == 1 ) {
 
         //No hi ha wp-json a la consulta

@@ -36,6 +36,7 @@ function pRest_Cache_Cron_AutoUpdate() {
             $url_request = get_object_value($element_data,"request",false);
             if ( $url_request) {
                 $url_real = site_url("/wp-json").$url_request;
+                //$url_real = add_query_arg(array("au"=>time()),$url_real);
                 $msg.="<br> Request[".$url_real."]";
                 $res = wp_remote_get($url_real);
 
@@ -61,7 +62,7 @@ function pRest_AutoUpdate_get_expired($number = 5) {
     $now = time();
 
     global $wpdb;
-    $sSQL = "SELECT * FROM `".$wpdb->prefix."prest_cache` WHERE ((SELECT `time` + ".$delay.") < ".$now." )";
+    $sSQL = "SELECT * FROM `".$wpdb->prefix."prest_cache` WHERE ((SELECT `time` + ".$delay.") < ".$now." ) ORDER BY `time` ASC";
 
     if ( $number ) {
         $sSQL.=" LIMIT ".$number;
@@ -85,15 +86,6 @@ function pRest_AutoUpdate_get($number = 5) {
     $elements = array();
 
     global $wpdb;
-
-    // $sSQL = "SELECT * FROM `".$wpdb->prefix."prest_cache`
-    //     WHERE (
-    //         `object_type` = '".$object_type."' AND
-    //         `object_slug` = '".$object_slug."' AND
-    //         `object_id` = '".$object_id."'
-    //     )
-    // ";
-
     $sSQL = "SELECT * FROM `".$wpdb->prefix."prest_cache`";
 
     $data=array();

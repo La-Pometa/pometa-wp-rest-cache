@@ -342,7 +342,7 @@ class pometaRestSettings {
                     $total_registers = count($data);
                     $now  = time();
                     $ttl = intval(pRest_settings_get_autoupdate_minuts() * 60);
-
+                    $ttll=pRest_settings_get_autoupdate_minuts();
                     $expired = 0;
 
 
@@ -361,7 +361,7 @@ class pometaRestSettings {
                     $pc_completed = number_format($pc_completed,2);
                     $pc_completed = str_replace(".00","",$pc_completed);
 
-                    $notices[]=sprintf(__("<br><u>AutoUpdate</u> <br> Registres: %d consultes <br> Estat: %s%%  completat (%d/%d pendent).","pometaRestltd"),$total_registers,$pc_completed,$expired,$total_registers);
+                    $notices[]=sprintf(__("<br><u>AutoUpdate</u> <br> Registres: %d consultes <br> Temps caducitat: %d minuts <br> Estat: %s%%  completat (%d/%d pendent).","pometaRestltd"),$total_registers,$ttll, $pc_completed,$expired,$total_registers);
 
                 }
 

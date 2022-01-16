@@ -32,6 +32,8 @@ function pRestCache_GetUrlFromRequest($request) {
     $route = false;
 
     if ( $request ) {
+       
+       // $route = $request->get_route()."/"; //Si activo "/", he de passar una altra variable
         $route = $request->get_route();
 
         $params = $request->get_query_params();
