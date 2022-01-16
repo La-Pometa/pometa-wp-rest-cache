@@ -512,8 +512,6 @@ class pometaRestSettings {
         if ( $this->get_option("autoupdate")){
             $link_update = add_query_arg(array("page"=>"prest","action"=>"autoupdate-status"),admin_url("options-general.php"));
             echo '<br><br> <a href="'.$link_update.'" class="button">'.__("Mostrar estat").'</a>';
-
-            pRest_Cache_Cron_AutoUpdate();
         }
 
     }
