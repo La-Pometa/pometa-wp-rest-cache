@@ -4,7 +4,7 @@
 Plugin Name: Pometa REST API Cache
 Plugin URI: http://www.lapometa.com/plugins/pometarest
 Description: Gestió Cache API REST Pometa
-Version: 1.1
+Version: 1.2
 Author: Jordi Fonfreda
 Email: suport@lapometa.com
 Author URI: http://www.lapometa.com/author/jordi-fonfreda
