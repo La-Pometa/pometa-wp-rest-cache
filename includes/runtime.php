@@ -17,9 +17,9 @@ function pRestFilters() {
     crear una versió de cache de la consulta actual
 -*/
 function pRestFilterResponse($result , $t, $request ) {
-    // echo "<br>[prest:debug].. filter response...";
+    //echo "<br>[prest:debug].. filter response...";
     $file = pRest_get_request_cache_file($complete = true);
-    // echo "<br>[prest:debug].. filename: $file";
+    //echo "<br>[prest:debug].. filename: $file";
     $result = pRestCacheCreate($file,$result);
     do_action("prest/cache/created",$request);
 
@@ -94,7 +94,6 @@ function pRestCacheCreate($filename,$result) {
         "v2/cache/expire"
     );
     $prevent = apply_filters("rest/cache/prevent",$prevent);
-
     if ( $prevent && is_array($prevent) && count($prevent)) {
         foreach($prevent as $endpoint ) {
             if ( strpos($filename,$endpoint) !== false) {
@@ -104,16 +103,24 @@ function pRestCacheCreate($filename,$result) {
         }
     }
 
+    
     if ( $create ) {
 
-        $json = json_encode($result);
-        //$json = substr($json,1,strlen($json)-2);
+        $create = apply_filters("rest/cache/create",$create);
 
-        pRestCacheCreatePath($filename);
-        if(file_put_contents($filename,$json)) {
-            if(!pRest_gzCompressFile($filename)) {
-                //No existe "gzwrite" o error
+        if ( $create ) {
+
+
+            $json = json_encode($result);
+            //$json = substr($json,1,strlen($json)-2);
+
+            pRestCacheCreatePath($filename);
+            if(file_put_contents($filename,$json)) {
+                if(!pRest_gzCompressFile($filename)) {
+                    //No existe "gzwrite" o error
+                }
             }
+
         }
 
     }
