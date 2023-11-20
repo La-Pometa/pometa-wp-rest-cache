@@ -7,6 +7,10 @@
 
 class pometaRestSettings {
 	private $pRest_options;
+    var $header_start = "# BEGIN RESTCache";
+    var $header_end = "# END RESTCache";
+    var $wordpress_start = "# BEGIN WordPress";
+    var $fullpath = "";
 
     var $run_settings=array();
     
@@ -30,11 +34,16 @@ class pometaRestSettings {
 
         $this->thumbnail_sizes=false;
 	}
+    function get_fullpath() {
+        $path_slug = $this->get_option("path",false);
+        $fullpath = substr($this->fullpath,0,strlen($this->fullpath)-strlen($path_slug)).$prepath;
+        return $fullpath;
+    }
     function pRest_run_settings($old_value,$value,$option) {
 
         if (  $this->run_settings["update_htaccess_remove"] ) {$this->htaccess_remove();}
         else if ( $this->run_settings["update_htaccess"] ) {$this->htaccess_update();}
-        if (  $this->run_settings["update_cache_clean"] ) {pRest_routes_cache_clean($fullpath);}
+        if (  $this->run_settings["update_cache_clean"] ) {pRest_routes_cache_clean($this->fullpath);}
 
     }
     function pRest_save_settings($value,$old_value,$option) {
@@ -46,19 +55,22 @@ class pometaRestSettings {
         
         $enabled = get_array_value($value,"enabled","");
         $preenabled = get_array_value($old_value,"enabled","");
+
+
+
         $gzenabled = get_array_value($value,"gzenabled","");
         $pregzenabled = get_array_value($old_value,"gzenabled","");
         $path = get_array_value($value,"path","");
         $prepath = get_array_value($old_value,"path","");
         $patch403 = get_array_value($value,"htaccess_patch_403_enabled","");
         $prepatch403 = get_array_value($old_value,"htaccess_patch_403_enabled","");
-
+        $path_slug = "";
+        $fullpath = substr($this->fullpath,0,strlen($this->fullpath)-strlen($path_slug)).$prepath;
         
         if ( $path != $prepath ) {
                     
             if ( $enabled ) {
                 $this->run_settings["update_cache_clean"]=true;
-                $fullpath = substr($fullpath,0,strlen($fullpath)-strlen($path_slug)).$prepath;
                 $this->run_settings["update_htaccess"]=true;
 
                 add_settings_error(
@@ -71,6 +83,7 @@ class pometaRestSettings {
             
         }
         if ( $enabled != $preenabled) {
+            echo "<br> ENABLED[".$enabled."] PREENABLED[".$preenabled."]";
             if ( !$preenabled ) {
                 $this->run_settings["update_htaccess"]=true;
                 add_settings_error(
@@ -246,7 +259,13 @@ class pometaRestSettings {
 			'pRest_setting_advanced' // section
 		);
 
-
+        add_settings_field(
+            'cors', // id
+            'CORS', // title
+            array( $this, 'cors_callback' ), // callback
+            'prest-admin', // page
+            'pRest_setting_advanced' // section
+        );
 
         add_settings_field(
             'gzenabled', // id
@@ -289,6 +308,12 @@ class pometaRestSettings {
 			'prest-admin', // page
 			'pRest_setting_autoupdate' // section
 		);
+        add_settings_field(
+            'routes',
+            __('Selecciona las rutes de la API REST',"prestltd"),
+			array( $this, 'routes_callback' ), // callback
+			'prest-admin', // page
+            'pRest_setting_advanced');
 
 
 
@@ -402,6 +427,9 @@ class pometaRestSettings {
                     if ( $files_html ) {
                         $link_list = add_query_arg(array("page"=>"prest","action"=>"cache-list"),admin_url("options-general.php"));
                         $files_html ='<span class="list">'.$files_html.'</span><br><a href="'.$link_list.'">'.__("Mostrar arxius de nou","pometaRestltd").'</a>';
+                    }
+                    else {
+                        $files_html = __("<i>No hi ha elements de cache.</i>","pometaRestltd");
                     }
                     $notices[]=sprintf(__("Llistat de Cache <br><br> <strong>Total:</strong>  %s arxiu(s) i %s directori(s) <br> <strong>Tamany:</strong> %s. <br><br> <strong>Llista:</strong><br> %s","pometaRestltd"),$files,$directories,$total,$files_html);
                 }
@@ -517,6 +545,261 @@ class pometaRestSettings {
     }
 
 
+    // Callback para la sección de rutas
+    function routes_callback() {
+        echo __('Selecciona les rutes de la API REST que vols mantenir <i>en cache</i>',"prestltd");
+
+        $rutas = $this->get_all_api_rest_routes(); // Debes implementar esta función
+        $values = $this->get_option("routes");
+
+        echo '<style type="text/css" rel="wphl/settings/routes">
+        .wphl-marc {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            background: #ccc;
+            width: 80%;
+            height: 80%;
+            overflow: auto;
+            transform: translate(-50%,-50%);
+            max-width: 768px;
+            box-shadow: 2px 2px 40px -5px #000;
+            display: flex;
+            flex-direction: column;
+
+        }
+        .wphl-marc.hidden {
+            display: none;
+        }
+
+
+
+        .wphl-marc-close {
+            padding: 6px;
+            border-radius: 50%;
+            line-height: 10px;
+            font-size: 12px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        span.wphl-close-icon {
+            border-radius: 50%;
+            padding: 6px;
+            width: 10px;
+            height: 10px;
+            line-height: 10px;
+            font-size: 12px;
+            text-align: center;
+            box-shadow: 0px 0px 10px -3px #000;
+            background: #fff;
+        }
+        .wphl-marc-close:hover span.wphl-close-icon {
+            box-shadow: 0px 0px 10px 3px #333!important;
+        }
+        
+        .wphl-marc.wphl-marc-routes {
+            padding: 15px;
+            max-height: 400px;
+            margin-top:15px;
+            overflow: hidden;
+        }
+        .wphl-routes-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            background: #ccc;
+        }
+        .wphl-routes-title h3 {
+            margin: 0;
+        }
+        .wphl-routes-body {
+            padding: 5px;
+            border-radius: 8px;
+            flex: 1;
+            max-height: 100%;
+            overflow: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .wphl-marc-routes .wphl-route-line:not(.hidden) {
+            display:block;
+            margin:5px 0;
+        }
+        .wphl-marc-routes .wphl-route-line input:checked + label {
+            font-weight: bold;
+        }
+        .wphl-routes-resum .wphl-routes-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0px;
+            margin:15px 0;
+
+        }
+        .wphl-routes-header {
+            flex: 0;
+        }
+        .wphl-routes-resum .wphl-routes-list > span > span {
+            display:block;
+            margin: 5px 10px;
+            font-style: italic;
+            color: #999;
+        }
+        .wphl-routes-resum {
+            display: flex;
+            flex-direction: column;
+            gap: 0px;
+        }
+        .wphl-routes-list-wrapper {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 2px 2px inset rgba(0,0,0,0.5);
+            flex: 1;
+            max-height: 100%;
+            overflow: hidden;
+            z-index: 2;
+            position: relative;
+            display: flex;
+            padding: 10px 5px;
+        }
+        .wphl-routes-list-wrapper:before {
+            content: "";
+            width: calc(100% - 40px);
+            height: 20px;
+            position: absolute;
+            top: 2px;
+            z-index: 100;
+            left: 2px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.75), rgba(255,255,255,0.25));
+            border-radius: 8px;
+        }
+        .wphl-routes-list {
+            margin: 5px;
+            z-index: -1;
+            display: flex;
+            flex-direction: column;
+            max-height: 100%;
+            overflow: auto;
+            flex: 1;
+            height: 100%;
+        }
+        </style>
+        <script type="text/javascript" rel="wphl/settings/routes">
+            function WPHLCacheRoutesResum() {
+                h="";
+                jQuery(".wphl-route-line input:checked").each(function() {
+                     h += "<span>"+jQuery("label",jQuery(this).parents(".wphl-route-line")).html()+"</span>";
+                });
+                jQuery(".wphl-routes-list span").html(h);
+            }
+            function  WPHLCacheRoutesInit() {
+                    jQuery(".wphl-button[rel=\'wphl-button-routes-manage\']").click(function(e) {
+                        e.preventDefault();
+                        jQuery(".wphl-marc-routes").toggleClass("hidden");
+                        return false;
+                    });
+                    jQuery(".wphl-route-line input").change(function(e) {
+                        WPHLCacheRoutesResum();
+                    });
+                    jQuery("#wphl-routes-search").keyup(function(e) {
+                        WPHLCacheRoutesFilter(jQuery(this).val());
+                    });
+            }
+            jQuery(document).ready(function() {
+                WPHLCacheRoutesInit();
+                WPHLCacheRoutesResum();
+            });
+            function WPHLCacheRoutesFilter(val) {
+                console.log("Filter:",val);
+                    jQuery(".wphl-route-line input").each(function() {
+                        parent = jQuery(this).parent();
+                        this_val = jQuery("label",parent).html();
+                        if ( !val || this_val.includes(val) ) {
+                            console.log("Includes["+val+"]:["+this_val+"]");
+                            jQuery(parent).removeClass("hidden");
+                        }
+                        else {
+                            console.log("NOT Includes["+val+"]:["+this_val+"]");
+                            jQuery(parent).addClass("hidden");
+                        }
+                    });
+            }
+        </script>
+        ';
+        echo  '<div class="wphl-routes">';
+        echo ' <div class="wphl-routes-resum">
+                    <div class="wphl-routes-list">
+                        <strong>'.__("Rutes seleccionades","wphlcacheltd").'</strong>
+                        <span></span>
+                    </div>
+                    <div class="wphl-routes-manage">
+                        <button class="wphl-button" rel="wphl-button-routes-manage">'.__("Gestionar rutes","wphlcacheltd").'</button>
+                        
+                    </div>
+                </div>';
+
+        echo  '<div class="wphl-marc wphl-marc-routes hidden">';
+        if ($rutas) {
+            echo '<div class="wphl-routes-header">
+                    <div class="wphl-routes-title">
+                            <h3>'.__("Seleccionar rutes","wphlcacheltd").'</h3>
+                            <div class="wphl-marc-close" >
+                                <span class="wphl-close-icon wphl-button" rel="wphl-button-routes-manage">X</span>
+                            </div>
+                    </div>
+                </div>';
+            echo '<div class="wphl-routes-body">';
+            echo '<div class="wphl-routes-search">
+            <label> '.__("Filtrar rutes:","wphlcacheltd").'</label>
+            <input type="text" id="wphl-routes-search" />
+        </div>';
+        echo '<div class="wphl-routes-list-wrapper">';
+        echo '<div class="wphl-routes-list">';
+
+            foreach ($rutas as $ruta => $route_data) {
+               // echo "<br> DATA:<pre>".$ruta."</pre>";
+                $checked = isset($values[$ruta]) ? 'checked' : '';
+                echo ''.
+                    '<div class="wphl-route-line">'.
+                        '<input type="checkbox" id="wphl-route-'.esc_attr($ruta).'" name="pRest_settings[routes][' . esc_attr($ruta) . ']" ' . esc_attr($checked) . '/>'.
+                        '<label for="wphl-route-'.esc_attr($ruta).'">'. esc_html($ruta) . '</label>'.
+                    '</div>'.
+                '';
+            }
+            echo '</div>';
+            echo '</div>';
+            echo '</div>';
+
+        }
+        echo '</div>';
+        echo '</div>';
+    }
+        
+
+    function get_all_api_rest_routes() {
+
+        $rest_server = rest_get_server();
+        $list = array();
+        if (class_exists('WP_REST_Server') && $rest_server instanceof WP_REST_Server) {
+            $routes = $rest_server->get_routes();
+
+          //  echo "<br> ROUTES:<pre>".print_r($routes,true)."</pre>";
+           // var_dump($routes);
+            foreach ($routes as $route => $route_data) {
+                $list[$route]=$route_data;
+            }
+        } else {
+            $list = false;
+            echo "La API REST no está habilitada en este sitio.";
+        }
+        return $list;
+    }
+
+
     public function autoupdate_minutes_callback() {
         $value = get_array_value($this->pRest_options,"autoupdate_minutes",false);
         $placeholder = 120;
@@ -589,6 +872,25 @@ class pometaRestSettings {
 		echo sprintf('<input class="regular-checbox" type="hidden" name="pRest_settings[_path]" id="_path" value="%s">',$selected);
 	}
 
+    public function cors_callback() {
+        $msg = __("Estableix quins dominis estan permesos per CORS. Múltiples dominis, separats per comes.","pometaRestltd");
+        $placeholder=site_url();
+
+        $value = $this->get_option("cors",false);
+
+        $cors_value = $value;
+        if ( !$cors_value) {
+            $cors_value = $placeholder;
+        }
+        $text = sprintf('<strong>CORS:</strong> %s' ,$cors_value);
+		$input = sprintf('<input class="regular-text" type="text" name="pRest_settings[cors]" placeholder="%s" id="cors" style="display:block;" value="%s">',$placeholder,$value);
+   
+        echo $input;
+        echo '<label style="font-size:90%;color:#aaa;" for="cors">'.$msg.'</label>';
+        echo "<br>";
+        echo '<i style="font-size:90%;color:#aaa;">'.$text.'</i>';
+
+    }
     public function path_callback() {
         $placeholder = $this->path_placeholder();
         $value = get_array_value($this->pRest_options,"path",false);
@@ -610,13 +912,12 @@ class pometaRestSettings {
 
     }
     function htaccess_remove() {
-        $this->header_start="# BEGIN RESTCache";
-        $this->header_end ="# END RESTCache";
-        $wordpress_start = "# BEGIN WordPress";
 
         $droot = ABSPATH;
-
         $htaccess_file = $droot.".htaccess";
+        $prcache_name="prcache.php";
+        $prcache_file = $droot.$prcache_name;
+
         if ( file_exists($htaccess_file)) {
             $content = file_get_contents($htaccess_file);
             $parts = explode($this->header_start,$content);
@@ -626,7 +927,7 @@ class pometaRestSettings {
             $end = get_array_value($mid_parts,1,false);
             $mid = get_array_value($mid_parts,0,false);
 
-            if ( strpos($start,$wordpress_start)!==false) {
+            if ( strpos($start,$this->wordpress_start)!==false) {
                 $end = $start . $end;
                 $start = "";
             }
@@ -636,6 +937,9 @@ class pometaRestSettings {
 
 
         }
+
+
+        unlink($prcache_file);
     }
 
 
@@ -647,17 +951,24 @@ class pometaRestSettings {
 
     function htaccess_update() {
 
-        $this->header_start="# BEGIN RESTCache";
-        $this->header_end ="# END RESTCache";
-        $wordpress_start = "# BEGIN WordPress";
-
+        $subfolder = "";
 
         $path = $this->get_option("path",false);
         if ( !trim($path)) {
             $path=$this->path_placeholder();
         }
+
+        //Remove trailing slash
+        if ( $path && substr($path,strlen($path)-1,1)=="/"){
+            $path = substr($path,0,strlen($path)-1);
+        }
+
         $droot = ABSPATH;
+        $prcache_name="prcache.php";
         $document_root = get_array_value($_SERVER,"DOCUMENT_ROOT","");
+        $htaccess_file = $droot.".htaccess";
+        $prcache_file = $droot.$prcache_name;
+        $with_debug = false;
 
         //Normalize "public_html";
         $droot = str_replace("/private_html","/public_html",$droot);
@@ -666,80 +977,45 @@ class pometaRestSettings {
         $droot = str_replace($document_root,"%{DOCUMENT_ROOT}",$droot);
 
         $gzenabled = pRest_settings_get_compress_enabled();
-        $patch403 = pRest_settings_get_htaccess_patch_403_enabled();
-        
-        $patch403_params_max = 5;
-        $patch403_params_min = 0;
-        $patch403_rules="";
-
-        while ( $patch403_params_min < $patch403_params_max ) {
-            $patch403_rules.=''.
-            "\n".'RewriteCond %{ENV:pRestQS} (.*)\=(.*)'.
-            "\n".'RewriteRule . - [E=pRestQS:%1-%2]'.
-            ($patch403_params_min?
-                "\n".'RewriteCond %{ENV:pRestQS} (.*)\&(.*)'. 
-                "\n".'RewriteRule . - [E=pRestQS:%1-%2]'
-                :'').
-            '';
-            $patch403_params_min++;
-        }
+      
+       
 
         $rules ="";
-        $rules.="".
-        
+
+        if ( $subfolder ) {
+            $subfolder .="/";
+        }
+        $pathfolder = 'wp-content/cache/'.$path;
+        $wpjson_route="wp-json";
+        $origin = $this->get_option("cors",false);
+
+
+        $rules = "".
                     
         $this->header_start.
-        "\n".'# Las directivas (líneas) entre «'.str_replace("# ","",$this->header_start).'» y «'.str_replace("# ","",$this->header_end).'» son'.
+             '# Las directivas (líneas) entre «'.str_replace("# ","",$this->header_start).'» y «'.str_replace("# ","",$this->header_end).'» son'.
         "\n".'# generadas dinámicamente y solo deberían ser modificadas mediante filtros de WordPress.'.
         "\n".'# Cualquier cambio en las directivas que hay entre esos marcadores serán sobrescritas.'.
-        //"\n".'# [DROOT]=['.ABSPATH.']'.
-        //"\n".'# [DOCUMENT_ROOT]=['.$document_root.']'.
-        //"\n".'# [DROOT]=['.$droot.']'.
-        ($gzenabled?
         "\n".
-        "\n# Si està 'gz' habilitat, habilitar compressió per a json.gz".
+        ($gzenabled?
+        "\n# Si 'gz' está habilitado, habilitar compresión para json.gz".
         "\n".'<FilesMatch index\.json\.gz$>'.
-        "\n".' ForceType text/json'.
-        "\n".' Header set Content-Encoding gzip'.
+        "\n".'  ForceType text/json'.
+        "\n".'  Header set Content-Encoding gzip'.
         "\n".'</FilesMatch>'.
         "\n"
         :'').
-
-        "\n".'#Parse consulta json'.
-        "\n".'RewriteCond %{REQUEST_URI} /wp-json/'.
-        "\n".'RewriteRule . - [E=pRestURI:%{REQUEST_URI}]'.
-        "\n".'RewriteRule . - [E=pRestQS:]'.
-        "\n".'RewriteRule . - [E=pRestOQS:]'.
-        "\n".'RewriteRule . - [E=pRestPATH:%{DOCUMENT_ROOT}/headless/wp-content/cache/apirest/]'.
-        "\n".'RewriteCond %{QUERY_STRING} ^(.*)$'.
-        "\n".'RewriteRule . - [E=pRestQS:%{QUERY_STRING}]'.
-        "\n".'RewriteRule . - [E=pRestOQS:%{QUERY_STRING}]'.
-        ($gzenabled?
-        "\n".'RewriteCond %{HTTP:Accept-Encoding} gzip'.
-        "\n".'RewriteRule . - [E=pRestGZ:.gz]'
-        :'').
-        "\n".'RewriteCond %{ENV:pRestQS} !^$'.
-        "\n".'RewriteRule . - [E=pRestQS:%{ENV:pRestQS}/]'.
+        "\n# Comprobar si existe cache para este archivo".
+        "\n".'RewriteCond %{REQUEST_URI} ^/'.$wpjson_route.'/'.
+        "\n".'RewriteRule . "/'.$prcache_name.'?__path=/'.$pathfolder.'" [L,QSA]'.
         "\n".''.
-        ($patch403?
-        "\n".'#Patch403 - Convertir "=","&" a "-","-"'.
-        $patch403_rules.
-        "\n"
-        :"").
-        "\n".'#Url cache final'.
-        "\n".'RewriteRule . - [E=pRestURL:%{ENV:pRestPATH}%{ENV:pRestURI}%{ENV:pRestQS}index.json%{ENV:pRestGZ}]'.
-        "\n".''.
-        "\n".'#Si està en cache, retornar'.
-        "\n".'RewriteCond %{ENV:pRestURL} /wp-json/'.
-        "\n".'RewriteCond %{ENV:pRestURL} -f'.
-        "\n".'RewriteRule ^(.*)$ %{ENV:pRestURL} [L]'.
-        "\n".''.
-        "\n".'#Si no està, seguir procès normal'.
+        "\n".'#If here, default request ...'.
         "\n".$this->header_end.
         "\n".'';
 
 
-        $htaccess_file = ABSPATH.".htaccess";
+
+
         if ( file_exists($htaccess_file)) {
             $content = file_get_contents($htaccess_file);
             $parts = explode($this->header_start,$content);
@@ -748,27 +1024,38 @@ class pometaRestSettings {
             $mid_parts = explode($this->header_end,$mid);
             $end = get_array_value($mid_parts,1,false);
             $mid = get_array_value($mid_parts,0,false);
-
-            if ( strpos($start,$wordpress_start)!==false) {
+            
+            if ( strpos($start,$this->wordpress_start)!==false) {
                 $end = $start . $end;
                 $start = "";
             }
-
-
-            //echo "<br>[START]---------------------";
-            //echo $start;
-            //echo "<br>[/START]<br><br>---------------------[MID]";
-            //echo $mid;
-            //echo "<br>[/MID]<br><br>---------------------[END]";
-            //echo $end;
-            //echo "<br>[/END]---------------------";
             
             $newcontent = $start.$rules.$end;
             file_put_contents($htaccess_file,$newcontent);
-
-
-
+            
+            
         }
+
+
+        //File prcache.php
+
+
+        $prcache = "";
+        $prcache .= '<?php ';
+        $prcache .= "\n".'//Variables';
+        $prcache .= "\n".'$prcache_apiroute="'.$wpjson_route.'";';
+        $prcache .= "\n".'$prcache_origin="'.$origin.'";';
+        $prcache .= "\n".'$prcache_debug='.($with_debug?"true":"false").';';
+        $prcache .= "\n".'';
+        $prcache .= "\n".'//Check if has cache';
+        $prcache .= "\n".' $prcache_file = "'.dirname(__FILE__).'/htaccess.php";';
+        $prcache .= "\n".' if ( file_exists($prcache_file)){require_once($prcache_file);}';
+        $prcache .= "\n".'';
+        $prcache .= "\n".'//If here no cache, do default';
+        $prcache .= "\n".' require("index.php");';
+        $prcache .= "\n".'';
+
+        file_put_contents($prcache_file,$prcache);
 
 
     }
@@ -817,3 +1104,29 @@ function pRest_Cron_Create() {
     return "already";
 }
 
+function wphl_cache__route_is_enabled($route) {
+    $cache_settings = get_option( 'pRest_settings' );
+    $routes = get_array_value($cache_settings,"routes",array());
+
+    // echo "<br> CHECK IF IS ENABLED FOR[".$route."]";
+    // echo "<br> ROUTES: <pre>".print_r($routes,true)."</pre>";
+    // die();
+    foreach($routes as $route_key => $route_enabled) {
+        $route_array = explode("(",$route);
+        $route_key = get_array_value($route_array,0,"");
+        $route_params = get_array_value($route_array,1,false);
+        if ( $route_params ) {
+            if ( substr($route,0,strlen($route_key)) == $route_key) {
+                return true;
+            }
+        }
+        else {
+            if ( $route_key == $route) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+
+}

@@ -81,30 +81,37 @@ function pRest_settings_get_path() {
     nom arxiu de cache de la consulta actual: modificació del nom per accedir des de htaccess 
 -*/
 
-function pRest_get_request_cache_file($complete = false) {
+function pRest_get_request_cache_file($request, $complete = false) {
 
-    list ( $uri, $directory )= pRest_get_request_uri();
-    
+
+    //list ( $uri, $directory )= pRest_get_request_uri();
+    $uri = pRestCache_GetUrlFromRequest($request);
+    //$params = "";
     if(substr_last_char($uri) == "/"){$uri.="/";}
+    //if($directory && substr_last_char($directory) != "/"){$directory.="/";}
+    //echo "\n<br> REQUEST: <pre>".print_r($request,true)."</pre>";
+
+   // echo "\n<br> URI: $uri";
 
     //$in = array("/","?","&","=");
     //$out = array("-","-","-","-");
     $in = array("?");
     $out=array("/");
     
-    $patch403 = pRest_settings_get_htaccess_patch_403_enabled();
-
-    if ( $patch403 ) {
-        $in=array_merge(array("=","&"),$in);
-        $out = array_merge(array("-","-"),$out);
-    }
+    $in=array_merge(array("=","&"),$in);
+    $out = array_merge(array("-","-"),$out);
 
     $uri = str_replace($in,$out,$uri);
+    
     if ( $complete ) {
-        $uri = pRest_settings_get_path().$directory."/wp-json/".$uri."/";
+        $uri = pRest_settings_get_path()."/wp-json/".$uri;
     }
     $uri.="/index.json";
     $uri = str_replace("//","/",$uri);
+
+    // echo "\n<br> URI LAST: $uri";
+    //echo "\n<br> URI PARAMS: $params";
+
     return $uri;
 }
 
@@ -126,11 +133,27 @@ function pRest_get_request_uri() {
         return array("", "");
     }
 
+    $uri_array = explode("?",$uri);
+    $uri_start = get_array_value($uri_array,0,"");
+    $uri_params = get_array_value($uri_array,1,"");
+    $uri_params_array = ($uri_params ? explode("&",$uri_params) : array());
+    $uri_final = "";
+    if ( $uri_params_array && is_array($uri_params_array)) {
+        foreach($uri_params_array as $param_key) {
+            $get_array = explode("=",$param_key);
+            $get_key = get_array_value($get_array,0);
+            $get_value = get_array_value($get_array,1,"");
+            $uri_final .= ($uri_final ? "-" : ""). $get_key . "-" . $get_value;
+        }
+    }
 
-
-
-    $directory = get_array_value($uri_params,"0","no-domain");
-    $uri = get_array_value($uri_params,"1","no-directory");
+  
+    $directory = get_array_value($uri_params,"0","no-subfolder");
+    if ( $directory == "no-subfolder" ) { $directory = ""; }
+    
+    $uri = get_array_value($uri_params,"1","no-domain");
+    if ( $uri == "no-domain" ) { $uri = ""; }
+    echo "<br> URI : [".$uri."]";
     return array($uri , $directory);
 
 }

@@ -27,6 +27,15 @@ function pRest_plugin_activate() {
 }
 function pRest_plugin_deactivate() {
     wp_clear_scheduled_hook( 'pRestCacheCron' );
+
+    $prc = new pometaRestSettings();
+    error_log("pRest_plugin_deactivate: [".$prc->get_fullpath()."]");
+    //Eliminar cache actual
+    pRest_routes_cache_clean($prc->get_fullpath());
+    die("Deactivate!");
+    
+    //Deactivar htaccess
+    $prc->htaccess_remove();
 }
 
 function pRest_cron_schedules($schedules){

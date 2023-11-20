@@ -8,18 +8,14 @@ Parts principals:
 1.- Creació de cron
 2.- Marca estat en database
 
-
 -*/
 
 
-add_action('pRestCacheCron', 'pRest_Cache_Cron_AutoUpdate');
+//add_action('pRestCacheCron', 'pRest_Cache_Cron_AutoUpdate');
 
 function pRest_Cache_Cron_AutoUpdate() {
 
-    /*- 
-        Realitzar X consultes per generar arxiu cache 
-    -*/
-   
+    //Realitzar $number consultes per generar arxiu cache 
     $number = apply_filters("prest/cache/autoupdate/num",5);
 
 
@@ -31,12 +27,14 @@ function pRest_Cache_Cron_AutoUpdate() {
 
     $msg = "<h3>pRest_Cache_Cron_AutoUpdate[".$number."]</h3>";
 
+
+    $apipath = apply_filters("prest/cache/apipath","wp-json");
+
     if ( $elements && count($elements)) {
         foreach($elements as $element_pos => $element_data) {
             $url_request = get_object_value($element_data,"request",false);
             if ( $url_request) {
-                $url_real = site_url("/wp-json").$url_request;
-                //$url_real = add_query_arg(array("au"=>time()),$url_real);
+                $url_real = site_url("/".($apipath?$apipath:"wp-json")).$url_request;
                 $msg.="<br> Request[".$url_real."]";
                 $res = wp_remote_get($url_real);
 
@@ -58,7 +56,7 @@ function pRest_AutoUpdate_get_expired($number = 5) {
 
     $elements = array();
 
-    $delay = intval(pRest_settings_get_autoupdate_minuts() * 60);
+    $delay = intval( pRest_settings_get_autoupdate_minuts()) * 60 ;
     $now = time();
 
     global $wpdb;
@@ -102,19 +100,29 @@ function pRest_AutoUpdate_get($number = 5) {
 }
 
 
-/*-
-    prest acaba de crear una versió en cache de una request:
-    actualitzar el temps de creació la request a la base de dades
+//Prest acaba de crear una versió en cache de una request:
+//actualitzar el temps de creació la request a la base de dades
 
--*/
-
-add_action("prest/cache/created","pRest_AutoUpdate_cache_created");
+//add_action("prest/cache/created","pRest_AutoUpdate_cache_created");
 
 function pRest_AutoUpdate_cache_created($request) {
 
+        $object_slug = "";
+        $object_id = "";
 
         $url = pRestCache_GetUrlFromRequest($request);
-        $actions = array(array("action"=>"update","data"=>array("request" => $url)));
+        $actions = array(
+            array(
+                "action"=>"update",
+                "url"=>$url,
+                "data"=>array(
+                    "request" => $url,
+                    "object_slug"=> $object_slug,
+                    "object_id"=> $object_id,
+                )
+            )
+        );
+
         pPrestAutoUpdate_process_actions($actions);
 
 }
@@ -130,29 +138,30 @@ function pPrestAutoUpdate_process_actions($actions) {
         foreach($actions as $action) {
             $this_action = get_array_value($action,"action",false);
             if ( $this_action ) {
+
                 $data = get_array_value($action,"data",array());
+                $url = get_array_value($action,"data",array());
 
                 if ( $this_action == "update") {
-
                     $request = get_array_value($data,"request",false);
-
-                    $file = pRest_get_request_cache_file();
+                    $object_slug = get_array_value($data,"object_slug","post");
+                    $object_id = get_array_value($data,"object_id","1");
+                    $object_status = 1;
+                    
                     $sSQL = '
-                    INSERT INTO `'.$wpdb->prefix.'prest_cache` 
-                            (`ID`, `request`, `object_slug`, `object_id`, `status`, `path`, `time`)
-                            VALUES
-                            (NULL, "'.$request.'", "", "'.time().'", "1", "'.$file.'" , "'.time().'" )
-                            ON DUPLICATE KEY UPDATE 
-                                `time`="'.time().'"';
+                        INSERT INTO `'.$wpdb->prefix.'prest_cache` 
+                        (`ID`, `request`, `object_slug`, `object_id`, `status`, `path`, `time`)
+                        VALUES
+                        (NULL, "'.$request.'", "'.$object_slug.'", "'.$object_id.'", "'.$object_status.'", "'.$url.'" , "'.time().'" )
+                        ON DUPLICATE KEY UPDATE 
+                            `time`="'.time().'"
+                    ';
                     
 
                     $ras = $wpdb->get_results($sSQL);
 
                 }
-
             }
-            
-
         }
     }
 }
